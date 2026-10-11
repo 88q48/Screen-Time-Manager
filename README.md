@@ -1,74 +1,90 @@
-# 使用时间统计看板（C 模块）
+# Screen Time Manager
 
-同一份数据，两种呈现方式：**Streamlit 看板**（自己调试用）和 **静态网页**（发给别人看）。
+收集应用使用时长，后端统一统计口径，前端做数据展示。
 
-## 项目结构
+## 目录结构
 
 ```
 .
-├── mock_data.py        模拟后端数据（原始事件 + 聚合响应）
-├── api_client.py       Streamlit 用的数据获取入口，mock / 真实 API 可切换
-├── config.py           Streamlit 用的配置
-├── charts.py           Streamlit 用的图表函数（Plotly）
-├── app.py              Streamlit 主页面
-├── requirements.txt    依赖清单
-└── web/                静态网页（不用装 Python）
-    ├── index.html      页面入口，双击即可打开
-    ├── style.css       样式
-    ├── config.js       网页配置：API 地址、设备 ID、是否用 mock
-    ├── charts.js       图表配置（ECharts）
-    ├── app.js          数据获取、渲染、使用建议
-    ├── mock-data.js    由 gen_mock.py 生成，勿手改
-    ├── gen_mock.py     从 mock_data.py 生成 mock-data.js
-    └── lib/echarts.min.js  ECharts（本地版，断网也能用）
+├── dashboard/     C 模块：数据看板（Streamlit + 静态网页）
+│   ├── app.py             Streamlit 主页面
+│   ├── charts.py          图表函数（Plotly）
+│   ├── config.py          配置：API 地址、设备 ID、是否用 mock
+│   ├── api_client.py      数据获取入口，mock / 真实 API 可切换
+│   ├── mock_data.py       模拟后端返回的数据
+│   └── web/               静态网页（ECharts，不需要 Python）
+│
+├── windows/       A 模块：Windows 采集客户端
+│   └── tests/             前台窗口识别、空闲检测、计时、本地数据库
+│
+├── backend/       B 模块：后端接口（尚未开始）
+│   └── README.md          接口清单与上传格式
+│
+└── docs/
+    └── api-fields.md      分析接口字段约定
 ```
 
-## 一、静态网页
+## 快速开始
 
-**双击 `web/index.html` 就能看**，不需要装任何东西。
+### 静态网页（最简单）
 
-要改数据来源，编辑 `web/config.js`：
+双击 `dashboard/web/index.html` 即可，不需要安装任何东西。
+
+要连真实后端时，改 `dashboard/web/config.js`：
 
 ```js
-USE_MOCK: true,                                  // false 表示请求后端
-API_BASE_URL: "http://localhost:8000/api/v1",    // 后端地址
-DEVICE_ID: "win_device_01",
+USE_MOCK: false,
+API_BASE_URL: "http://localhost:8000/api/v1",
 ```
 
-`mock_data.py` 改动后，重新生成网页用的数据：
-
-```bash
-python web/gen_mock.py
-```
-
-## 二、Streamlit 看板
+### Streamlit 看板
 
 ```bash
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run dashboard/app.py
 ```
 
-浏览器会自动打开 `http://localhost:8501`。
+浏览器打开 `http://localhost:8501`。
 
-## 数据来源
+### 生成网页用的 mock 数据
 
-两个版本都读同一份数据，字段与后端 `/api/v1/devices/{device_id}/analysis` 对齐：
+改动 `dashboard/mock_data.py` 之后重新生成：
 
-| 字段 | 说明 |
+```bash
+python dashboard/web/gen_mock.py
+```
+
+### Windows 采集测试
+
+```bash
+cd windows/tests
+python test.py              # 前台窗口识别
+python test_idle.py         # 空闲检测
+python text_usage_timer.py  # 计时核心
+python test_database.py     # 建本地数据库
+```
+
+前三个是持续运行的，按 `Ctrl+C` 退出。
+
+## 数据流
+
+```
+Windows 客户端 ─┐
+                ├─→ 后端 ─→ 看板
+安卓客户端    ─┘
+```
+
+客户端只负责采集和上传，统计口径由后端统一，避免两端各算一套。
+
+上传格式与返回字段见 [`docs/api-fields.md`](docs/api-fields.md)。
+
+## 分支说明
+
+主开发分支是 `main`。每个人在自己的分支上写，写完合回 `main`。
+
+| 分支 | 状态 |
 |---|---|
-| `device_id` | 设备标识 |
-| `period` | 统计时间范围（UTC） |
-| `summary` | 总时长、日均、中位数、P90（秒） |
-| `trend` | 每日总时长 |
-| `app_ranking` | 应用排行（含类别） |
-| `group_comparison` | 群体均值、中位数、P90、我的排名 |
-
-## 使用建议的判断规则
-
-两个版本用同一套规则：
-
-- 日均 > 6 小时 → 明显偏长
-- 日均 > 4 小时 → 略高于健康范围
-- 娱乐类占比 > 40% → 建议调整使用结构
-- 学习类 < 0.5 小时 → 偏少
-- 都不触发 → 使用情况良好
+| `main` | 主线，保持可用 |
+| `dashboard` | C 模块开发分支（已并入 main 后停用） |
+| `master` | 早期误建，内容已并入 main，**已废弃** |
+| `windows` | 早期分支，内容已并入 main，**已废弃** |
