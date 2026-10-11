@@ -1,5 +1,19 @@
-streamlit>=1.30
-pandas>=2.0
-numpy>=1.24
-plotly>=5.18
-requests>=2.31
+# ---------- Web 看板 / 数据分析（C 模块）----------
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+requests
+streamlit
+jupyter
+openpyxl
+
+# ---------- Windows 客户端采集（A 模块）----------
+psutil==7.2.2
+PySide6==6.12.0
+PySide6_Addons==6.12.0
+PySide6_Essentials==6.12.0
+PySide6_Pdf==6.12.0.140
+PySide6_WebEngine==6.12.0.140
+shiboken6==6.12.0
