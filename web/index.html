@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>使用时间统计看板</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="hero">
+    <div>
+      <h1>📊 使用时间统计看板</h1>
+      <p class="sub" id="meta-line">正在加载…</p>
+    </div>
+    <span class="badge" id="source-badge">—</span>
+  </header>
+
+  <section class="cards" id="metrics"></section>
+
+  <section class="panel">
+    <h2>📈 每日使用趋势</h2>
+    <div class="chart" id="chart-trend"></div>
+  </section>
+
+  <div class="grid-2">
+    <section class="panel">
+      <h2>🏆 应用使用排行</h2>
+      <div class="chart" id="chart-ranking"></div>
+    </section>
+    <section class="panel">
+      <h2>🥧 使用类别占比</h2>
+      <div class="chart" id="chart-category"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>👥 个人 vs 群体</h2>
+    <div class="chart" id="chart-group"></div>
+    <p class="note" id="rank-note"></p>
+  </section>
+
+  <section class="panel">
+    <h2>💡 使用建议</h2>
+    <ul class="tips" id="tips"></ul>
+  </section>
+
+  <footer class="foot" id="footer"></footer>
+
+</div>
+
+<script src="config.js"></script>
+<script src="mock-data.js"></script>
+<script src="lib/echarts.min.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
