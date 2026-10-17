@@ -1,19 +1,26 @@
 # app.py
-"""
-Streamlit 主页面：使用时间统计看板。
-运行：streamlit run app.py
+"""错题管理与学情诊断看板。
+
+运行：streamlit run dashboard/app.py
+
+两个 Tab：
+- 错题诊断：错在哪、消化了多少、哪个知识点最薄弱
+- 专注与效率：时间投入了多少、产出了多少、哪天在假努力
 """
 
 import streamlit as st
-from api_client import fetch_analysis
-from charts import line_trend, bar_ranking, pie_category, bar_group_compare
 
-st.set_page_config(page_title="使用时间统计看板", layout="wide")
-st.title("📊 使用时间统计看板")
+from api_client import fetch_analysis
+from charts import (
+    radar_subject, bar_subject_mastery, bar_knowledge_points,
+    funnel_mastery, line_review_trend, dual_axis_efficiency,
+    line_focus_trend, pie_app_category, bar_group_compare,
+)
+
+st.set_page_config(page_title="错题管理与学情诊断", layout="wide")
 
 
 def fmt_hours(seconds):
-    """秒 → 小时，保留 1 位小数"""
     return f"{seconds / 3600:.1f} 小时"
 
 
@@ -27,70 +34,119 @@ with st.spinner("正在加载数据..."):
 
 summary = data["summary"]
 group = data["group_comparison"]
+err = data["error_stats"]
+efficiency = data["efficiency_trend"]
 
-# ---------- 指标卡 ----------
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("总时长", fmt_hours(summary["total_duration_seconds"]))
-col2.metric("日均", fmt_hours(summary["avg_daily_seconds"]))
-col3.metric("中位数", fmt_hours(summary["median_daily_seconds"]))
-col4.metric("P90", fmt_hours(summary["p90_daily_seconds"]))
-
+st.title("📚 错题管理与学情诊断")
 st.caption(
-    f"数据范围：{data['period']['start']} ~ {data['period']['end']}　"
-    f"设备：{data['device_id']}"
+    f"设备：{data['device_id']}　"
+    f"数据范围：{data['period']['start'][:10]} ~ {data['period']['end'][:10]}"
 )
 
-# ---------- 趋势图 ----------
-st.subheader("📈 每日使用趋势")
-st.plotly_chart(line_trend(data["trend"]), use_container_width=True)
+tab_error, tab_focus = st.tabs(["📕 错题诊断", "⏱ 专注与效率"])
 
-# ---------- 排行 + 饼图 ----------
-col_a, col_b = st.columns(2)
-with col_a:
-    st.subheader("🏆 应用使用排行")
-    st.plotly_chart(bar_ranking(data["app_ranking"]), use_container_width=True)
-with col_b:
-    st.subheader("🥧 使用类别占比")
-    st.plotly_chart(pie_category(data["app_ranking"]), use_container_width=True)
 
-# ---------- 群体对比 ----------
-st.subheader("👥 个人 vs 群体")
-st.plotly_chart(bar_group_compare(summary, group), use_container_width=True)
+# ==========================================================
+# Tab 1：错题诊断
+# ==========================================================
+with tab_error:
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("累计错题", f"{err['total_errors']} 道")
+    c2.metric("已掌握", f"{err['mastered_errors']} 道")
+    c3.metric("待复习", f"{err['reviewing_errors']} 道")
+    c4.metric("掌握率", f"{err['mastery_rate']}%")
 
-st.info(
-    f"你在群体中排名：第 **{group['my_rank']}** 名 / 共 **{group['group_size']}** 人"
-)
+    st.divider()
 
-# ---------- 使用建议 ----------
-st.subheader("💡 使用建议")
-tips = []
-avg_h = summary["avg_daily_seconds"] / 3600
-if avg_h > 6:
-    tips.append(f"日均 {avg_h:.1f} 小时，使用时间偏长，建议明显减少。")
-elif avg_h > 4:
-    tips.append(f"日均 {avg_h:.1f} 小时，略高于健康范围，注意控制。")
+    col_l, col_r = st.columns(2)
+    with col_l:
+        st.plotly_chart(radar_subject(data["subject_distribution"]),
+                        use_container_width=True)
+    with col_r:
+        st.plotly_chart(bar_subject_mastery(data["subject_distribution"]),
+                        use_container_width=True)
 
-# 娱乐类占比
-entertainment_seconds = sum(
-    item["duration_seconds"] for item in data["app_ranking"]
-    if item["category"] == "娱乐"
-)
-total_seconds = summary["total_duration_seconds"]
-if total_seconds > 0 and entertainment_seconds / total_seconds > 0.4:
-    tips.append("娱乐类应用占比超过 40%，建议调整使用结构。")
+    col_l2, col_r2 = st.columns([3, 2])
+    with col_l2:
+        st.plotly_chart(bar_knowledge_points(data["knowledge_points"]),
+                        use_container_width=True)
+    with col_r2:
+        st.plotly_chart(funnel_mastery(err), use_container_width=True)
 
-# 学习类
-study_seconds = sum(
-    item["duration_seconds"] for item in data["app_ranking"]
-    if item["category"] == "学习"
-)
-if study_seconds < 0.5 * 3600:
-    tips.append("学习类应用使用时间偏少，可适当增加。")
+    st.plotly_chart(line_review_trend(data["review_trend"]),
+                    use_container_width=True)
 
-if not tips:
-    tips.append("使用情况良好 👍")
+    # ---------- 诊断结论 ----------
+    st.subheader("🩺 诊断结论")
+    subjects = data["subject_distribution"]
+    weakest = max(subjects, key=lambda s: s["error_count"])
+    slowest = min(subjects, key=lambda s: s["mastery_rate"])
+    top_point = data["knowledge_points"][0]
 
-for t in tips:
-    st.write(f"- {t}")
+    st.write(
+        f"- 错题最多的是 **{weakest['subject']}**，"
+        f"累计 {weakest['error_count']} 道，已掌握 {weakest['mastered_count']} 道。"
+    )
+    st.write(
+        f"- 消化最慢的是 **{slowest['subject']}**，"
+        f"掌握率 {slowest['mastery_rate']}%，优先安排复盘。"
+    )
+    st.write(
+        f"- 最薄弱的知识点是 **{top_point['subject']} · {top_point['knowledge_point']}**，"
+        f"错了 {top_point['error_count']} 次。"
+    )
 
+
+# ==========================================================
+# Tab 2：专注与效率
+# ==========================================================
+with tab_focus:
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("累计专注", fmt_hours(summary["total_duration_seconds"]))
+    c2.metric("日均", fmt_hours(summary["avg_daily_seconds"]))
+    c3.metric("中位数", fmt_hours(summary["median_daily_seconds"]))
+    c4.metric("P90", fmt_hours(summary["p90_daily_seconds"]))
+
+    st.divider()
+
+    st.plotly_chart(dual_axis_efficiency(efficiency), use_container_width=True)
+
+    col_l, col_r = st.columns(2)
+    with col_l:
+        st.plotly_chart(line_focus_trend(data["trend"]), use_container_width=True)
+    with col_r:
+        st.plotly_chart(pie_app_category(data["app_ranking"]),
+                        use_container_width=True)
+
+    st.plotly_chart(bar_group_compare(summary, group), use_container_width=True)
+    st.info(f"你在群体中排名：第 **{group['my_rank']}** 名 / 共 **{group['group_size']}** 人")
+
+    # ---------- 效率诊断 ----------
+    st.subheader("🩺 效率诊断")
+    tips = []
+
+    for day in efficiency:
+        hours = day["focus_hours"]
+        resolved = day["resolved_errors"]
+        if hours >= 3 and resolved < 3:
+            tips.append(
+                f"**{day['date']}** 专注 {hours} 小时，只消灭 {resolved} 道错题，"
+                f"投入产出偏低，警惕假努力。"
+            )
+
+    total_hours = sum(d["focus_hours"] for d in efficiency)
+    total_resolved = sum(d["resolved_errors"] for d in efficiency)
+    if total_hours > 0:
+        per_hour = total_resolved / total_hours
+        tips.append(
+            f"近 {len(efficiency)} 天平均每投入 1 小时，消灭 {per_hour:.1f} 道错题。"
+        )
+
+    if not tips:
+        tips.append("投入与产出基本匹配，保持当前节奏。")
+
+    for t in tips:
+        st.write(f"- {t}")
+
+st.divider()
 st.caption("数据来源：后端 /api/v1/devices/{device_id}/analysis（当前为 mock）")

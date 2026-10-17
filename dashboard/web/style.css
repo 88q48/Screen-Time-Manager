@@ -156,3 +156,42 @@ body {
   color: #9aa3b2;
   font-size: 12.5px;
 }
+
+/* ---------- Tab 切换 ---------- */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  padding: 10px 20px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+
+.tab:hover { color: var(--accent); }
+
+.tab.active {
+  color: var(--accent);
+  font-weight: 700;
+  border-bottom-color: var(--accent);
+}
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* 宽窄两栏 */
+.grid-2.wide-left { grid-template-columns: 3fr 2fr; }
+@media (max-width: 860px) {
+  .grid-2.wide-left { grid-template-columns: 1fr; }
+}
+
+.chart.tall { height: 400px; }

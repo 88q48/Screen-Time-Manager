@@ -10,6 +10,8 @@ import random
 import numpy as np
 import os
 
+import error_mock
+
 BASE_URL = os.getenv("USAGE_API_BASE", "http://127.0.0.1:8000")
 USE_MOCK = os.getenv("USAGE_USE_MOCK", "1") == "1"
 
@@ -274,7 +276,12 @@ def get_mock_response_from_events(device_id="win_device_01", days=7):
     推荐 C 用这个函数，因为它和真实后端逻辑一致。
     """
     events = generate_raw_events(device_id=device_id, days=days)
-    return aggregate_events_to_response(events, device_id=device_id)
+    resp = aggregate_events_to_response(events, device_id=device_id)
+
+    # 合并错题维度（过程数据 + 结果数据，模拟后端一次性返回完整分析结果）
+    # focus_trend 传进去是为了让效率双轴图的日期轴和专注时长对齐
+    resp.update(error_mock.build_error_block(days=days, focus_trend=resp["trend"]))
+    return resp
 
 # 直接运行本文件时，打印 JSON，方便检查
 if __name__ == "__main__":
