@@ -17,7 +17,10 @@
 │   └── web/                静态网页（ECharts，双击即可打开）
 │
 ├── windows/          A 模块：Windows 采集客户端
-│   └── tests/              前台窗口识别、空闲检测、计时、本地数据库
+│   ├── app/
+│   │   ├── database.py         SQLite 建表、应用表、会话表、设置表
+│   │   └── usage_tracker.py    前台窗口识别、空闲检测、会话管理
+│   └── tests/                  验证脚本
 │
 ├── backend/          B 模块：后端接口
 │   └── README.md           接口清单与上传格式
@@ -61,17 +64,51 @@ streamlit run dashboard/app.py
 python dashboard/web/gen_mock.py
 ```
 
-### Windows 采集测试
+### Windows 采集
+
+采集核心在 `windows/app/`，`windows/` 作为包的根目录：
 
 ```bash
-cd windows/tests
-python test.py              # 前台窗口识别
-python test_idle.py         # 空闲检测
-python text_usage_timer.py  # 计时核心
-python test_database.py     # 建本地数据库
+cd windows
+python -m app.usage_tracker     # 启动采集，Ctrl+C 退出
 ```
 
-前三个是持续运行的，按 `Ctrl+C` 退出。
+数据库落在 `windows/tests/test_usage.db`（已在 .gitignore 里）。
+
+### 跑验证
+
+单元测试（会自动建临时库，不碰真实数据）：
+
+```bash
+python -m unittest windows.tests.test_database_module
+python -m unittest windows.tests.test_usage_tracker
+```
+
+一次性脚本：
+
+```bash
+python windows/tests/test_database_write.py   # 写库并回读
+python windows/tests/test.py                  # 前台窗口识别
+python windows/tests/test_foreground.py       # 持续监听，Ctrl+C 退出
+python windows/tests/test_idle.py             # 空闲检测，Ctrl+C 退出
+python windows/tests/text_usage_timer.py      # 计时核心
+```
+
+### 采集模块做了什么
+
+`app/database.py`：
+
+- `applications` 应用表，`app_key` 唯一
+- `usage_sessions` 会话表，带 `duration_seconds >= 0` 与时间先后约束
+- `settings` 配置表，默认 `idle_threshold_seconds=60`
+- 两个索引，分别加速按应用和按时间查询
+
+`app/usage_tracker.py`：
+
+- 用 `GetForegroundWindow` + `GetWindowThreadProcessId` 拿前台进程
+- 用 `GetLastInputInfo` 判断空闲，超过阈值就停止计时
+- 应用切换时关掉旧会话、开新会话
+- 崩溃或断电留下的未结束会话，下次启动时自动收尾
 
 ## 数据流
 
