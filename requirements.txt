@@ -1,19 +1,12 @@
-# ---------- Web 看板 / 数据分析（C 模块）----------
+# ---------- Web 看板 / 学情诊断（C 模块）----------
 pandas
 numpy
-matplotlib
-seaborn
 plotly
 requests
 streamlit
-jupyter
-openpyxl
 
 # ---------- Windows 客户端采集（A 模块）----------
 psutil==7.2.2
-PySide6==6.12.0
-PySide6_Addons==6.12.0
-PySide6_Essentials==6.12.0
-PySide6_Pdf==6.12.0.140
-PySide6_WebEngine==6.12.0.140
-shiboken6==6.12.0
+
+# 需要做桌面 UI 时再装（当前采集用的是 ctypes + psutil，不依赖 Qt）
+# PySide6==6.12.0
